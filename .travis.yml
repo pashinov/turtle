@@ -1,0 +1,71 @@
+language: cpp
+
+jobs:
+  include:
+    - arch: amd64
+      os: osx
+      osx_image: xcode12
+      addons:
+        homebrew:
+          packages:
+            - boost
+            - protobuf
+            - zeromq
+      env:
+        - TARGET=macos-amd64
+        - BOOST_ROOT=$(brew --prefix boost)
+        - Boost_LIBRARY_DIR=$(brew --prefix boost)/lib
+        - Boost_INCLUDE_DIR=$(brew --prefix boost)/include
+      deploy:
+        provider: releases
+        api_key: $GITHUB_TOKEN
+        file: turtle-$TRAVIS_TAG-$TARGET.tar.gz
+        skip_cleanup: true
+        on:
+          repo: pashinov/turtle
+          tags: true
+    - arch: amd64
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - libboost-system-dev
+            - libprotobuf-dev
+            - protobuf-compiler
+            - libzmq3-dev
+      env:
+        - TARGET=linux-amd64
+      deploy:
+        provider: releases
+        api_key: $GITHUB_TOKEN
+        file: turtle-$TRAVIS_TAG-$TARGET.tar.gz
+        skip_cleanup: true
+        on:
+          repo: pashinov/turtle
+          tags: true
+    - arch: arm64
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - libboost-system-dev
+            - libprotobuf-dev
+            - protobuf-compiler
+            - libzmq3-dev
+      env:
+        - TARGET=linux-arm64
+      deploy:
+        provider: releases
+        api_key: $GITHUB_TOKEN
+        file: turtle-$TRAVIS_TAG-$TARGET.tar.gz
+        skip_cleanup: true
+        on:
+          repo: pashinov/turtle
+          tags: true
+
+script:
+  - cmake -H. -Bbuild
+  - cmake --build build
+  - if [ -n "$TRAVIS_TAG" ]; then tar -C build -czf turtle-$TRAVIS_TAG-$TARGET.tar.gz turtle; fi
