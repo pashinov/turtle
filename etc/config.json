@@ -1,0 +1,35 @@
+{
+  "Config": {
+
+    "Application": {
+      "Name": "turtle"
+    },
+
+    "System": {
+      "Logging": {
+        "Level": "info",
+        "Path" : "/tmp/turtle.log"
+      }
+    },
+
+    "Connector": {
+      "Lion": {
+        "ZmqReq": {
+          "Addr": "ipc:///tmp/lion_frontend.socket"
+        }
+      },
+      "Phoenix": {
+        "ZmqPub": {
+          "Addr": "ipc:///tmp/phoenix_sender.socket",
+          "Topic": "phoenix_sender"
+        },
+        "ZmqSub": {
+          "Addr": "ipc:///tmp/phoenix_receiver.socket",
+          "Topic": "phoenix_receiver",
+          "Timeout": 1000
+        }
+      }
+    }
+
+  }
+}
