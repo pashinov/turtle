@@ -1,7 +1,7 @@
 syntax = "proto3";
-package phoenix_proto;
+package phoenix_protocol;
 
-message message
+message MqttMessage
 {
   string  topic   = 1;
   string  payload = 2;

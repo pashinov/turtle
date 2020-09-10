@@ -1,7 +1,7 @@
 // project includes
-#include <iot_service/lion_connector.hpp>
 #include <iot_service/microsvc_controller.hpp>
 #include <iot_service/task_manager.hpp>
+#include <system/sysinfo.hpp>
 #include <utils/config.hpp>
 #include <utils/logger.hpp>
 
@@ -27,253 +27,154 @@ namespace iot_service
         alive_ = true;
 
         pub_thread_ = std::thread([this]() {
-            std::unique_ptr<lion_connector> lion_conn = std::make_unique<lion_connector>();
-            lion_conn->connect(CONFIG()->connector.lion.zmq_req.addr);
-
             phoenix_connector_->publisher_instance()->bind(CONFIG()->connector.phoenix.zmq_pub.addr);
 
             // TODO: need to implement sync mechanism to wait for sub client connection
             std::this_thread::sleep_for(std::chrono::seconds(10));
 
-            std::function<void()> uptime = [this, &lion_conn]() {
-                if (lion_conn->is_connected())
+            std::function<void()> arch = [this]() {
+                auto arch = sys::sysinfo::get(lion_protocol::SysInfoType::ARCH);
+                if (arch.has_value())
                 {
-                    auto * sys_info = new lion_protocol::SysInfo();
-                    sys_info->set_type(lion_protocol::SysInfoType::UPTIME);
-                    auto * resource_type = new lion_protocol::ResourceType();
-                    resource_type->set_allocated_sysinfo(sys_info);
+                    phoenix_protocol::MqttMessage msg;
+                    msg.set_topic("sysinfo/arch");
 
-                    lion_protocol::Request request;
-                    request.set_command(lion_protocol::GET);
-                    request.set_allocated_resource(resource_type);
+                    nlohmann::json payload;
+                    payload["sysinfo"]["arch"] = std::get<std::string>(arch.value());
+                    msg.set_payload(payload.dump());
 
-                    lion_conn->send("uptime", request.SerializeAsString());
+                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
+                }
+            };
 
-                    std::string identity;
-                    std::string buffer;
-                    lion_conn->recv(identity, buffer);
+            std::function<void()> os = [this]() {
+                auto os = sys::sysinfo::get(lion_protocol::SysInfoType::OS);
+                if (os.has_value())
+                {
+                    phoenix_protocol::MqttMessage msg;
+                    msg.set_topic("sysinfo/os");
 
-                    lion_protocol::Response response;
-                    if (!response.ParseFromString(std::string(static_cast<char*>(buffer.data()), buffer.size())))
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to parse received protobuf response from Lion");
-                        return;
-                    }
+                    nlohmann::json payload;
+                    payload["sysinfo"]["os"] = std::get<std::string>(os.value());
+                    msg.set_payload(payload.dump());
 
-                    if (response.status() == lion_protocol::FAIL)
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Received response from Lion has a wrong status");
-                        return;
-                    }
+                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
+                }
+            };
 
-                    phoenix_proto::message msg;
+            std::function<void()> os_release = [this]() {
+                auto os_release = sys::sysinfo::get(lion_protocol::SysInfoType::OS_RELEASE);
+                if (os_release.has_value())
+                {
+                    phoenix_protocol::MqttMessage msg;
+                    msg.set_topic("sysinfo/os_release");
+
+                    nlohmann::json payload;
+                    payload["sysinfo"]["os_release"] = std::get<std::string>(os_release.value());
+                    msg.set_payload(payload.dump());
+
+                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
+                }
+            };
+
+            std::function<void()> cpu_num = [this]() {
+                auto cpu_num = sys::sysinfo::get(lion_protocol::SysInfoType::CPU_NUM);
+                if (cpu_num.has_value())
+                {
+                    phoenix_protocol::MqttMessage msg;
+                    msg.set_topic("sysinfo/cpu_num");
+
+                    nlohmann::json payload;
+                    payload["sysinfo"]["cpu_num"] = std::get<std::uint32_t>(cpu_num.value());
+                    msg.set_payload(payload.dump());
+
+                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
+                }
+            };
+
+            std::function<void()> cpu_speed = [this]() {
+                auto cpu_speed = sys::sysinfo::get(lion_protocol::SysInfoType::CPU_SPEED);
+                if (cpu_speed.has_value())
+                {
+                    phoenix_protocol::MqttMessage msg;
+                    msg.set_topic("sysinfo/cpu_speed");
+
+                    nlohmann::json payload;
+                    payload["sysinfo"]["cpu_speed"] = std::get<std::uint32_t>(cpu_speed.value());
+                    msg.set_payload(payload.dump());
+
+                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
+                }
+            };
+
+            std::function<void()> storage_total = [this]() {
+                auto storage_total = sys::sysinfo::get(lion_protocol::SysInfoType::STORAGE_TOTAL);
+                if (storage_total.has_value())
+                {
+                    phoenix_protocol::MqttMessage msg;
+                    msg.set_topic("sysinfo/storage_total");
+
+                    nlohmann::json payload;
+                    payload["sysinfo"]["storage_total"] = std::get<std::uint32_t>(storage_total.value());
+                    msg.set_payload(payload.dump());
+
+                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
+                }
+            };
+
+            std::function<void()> storage_free = [this]() {
+                auto storage_free = sys::sysinfo::get(lion_protocol::SysInfoType::STORAGE_FREE);
+                if (storage_free.has_value())
+                {
+                    phoenix_protocol::MqttMessage msg;
+                    msg.set_topic("sysinfo/storage_free");
+
+                    nlohmann::json payload;
+                    payload["sysinfo"]["storage_free"] = std::get<std::uint32_t>(storage_free.value());
+                    msg.set_payload(payload.dump());
+
+                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
+                }
+            };
+
+            std::function<void()> uptime = [this]() {
+                auto uptime = sys::sysinfo::get(lion_protocol::SysInfoType::UPTIME);
+                if (uptime.has_value())
+                {
+                    phoenix_protocol::MqttMessage msg;
                     msg.set_topic("sysinfo/uptime");
-                    msg.set_payload(response.payload().sval());
+
+                    nlohmann::json payload;
+                    payload["sysinfo"]["uptime"] = std::get<std::string>(uptime.value());
+                    msg.set_payload(payload.dump());
 
                     phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
                 }
             };
 
-            std::function<void()> boot_time = [this, &lion_conn]() {
-                if (lion_conn->is_connected())
+            std::function<void()> temperature = [this]() {
+                auto temperature = sys::sysinfo::get(lion_protocol::SysInfoType::TEMPERATURE);
+                if (temperature.has_value())
                 {
-                    auto * sys_info = new lion_protocol::SysInfo();
-                    sys_info->set_type(lion_protocol::SysInfoType::BOOT_TIME);
-                    auto * resource_type = new lion_protocol::ResourceType();
-                    resource_type->set_allocated_sysinfo(sys_info);
-
-                    lion_protocol::Request request;
-                    request.set_command(lion_protocol::GET);
-                    request.set_allocated_resource(resource_type);
-
-                    lion_conn->send("boot_time", request.SerializeAsString());
-
-                    std::string identity;
-                    std::string buffer;
-                    lion_conn->recv(identity, buffer);
-
-                    lion_protocol::Response response;
-                    if (!response.ParseFromString(std::string(static_cast<char*>(buffer.data()), buffer.size())))
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to parse received protobuf response from Lion");
-                        return;
-                    }
-
-                    if (response.status() == lion_protocol::FAIL)
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Received response from Lion has a wrong status");
-                        return;
-                    }
-
-                    phoenix_proto::message msg;
-                    msg.set_topic("sysinfo/boot_time");
-                    msg.set_payload(response.payload().sval());
-
-                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
-                }
-            };
-
-            std::function<void()> temperature = [this, &lion_conn]() {
-                if (lion_conn->is_connected())
-                {
-                    auto * sys_info = new lion_protocol::SysInfo();
-                    sys_info->set_type(lion_protocol::SysInfoType::TEMPERATURE);
-                    auto * resource_type = new lion_protocol::ResourceType();
-                    resource_type->set_allocated_sysinfo(sys_info);
-
-                    lion_protocol::Request request;
-                    request.set_command(lion_protocol::GET);
-                    request.set_allocated_resource(resource_type);
-
-                    lion_conn->send("temperature", request.SerializeAsString());
-
-                    std::string identity;
-                    std::string buffer;
-                    lion_conn->recv(identity, buffer);
-
-                    lion_protocol::Response response;
-                    if (!response.ParseFromString(std::string(static_cast<char*>(buffer.data()), buffer.size())))
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to parse received protobuf response from Lion");
-                        return;
-                    }
-
-                    if (response.status() == lion_protocol::FAIL)
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Received response from Lion has a wrong status");
-                        return;
-                    }
-
-                    phoenix_proto::message msg;
+                    phoenix_protocol::MqttMessage msg;
                     msg.set_topic("sysinfo/temperature");
-                    msg.set_payload(response.payload().sval());
+
+                    nlohmann::json payload;
+                    payload["sysinfo"]["temperature"] = std::get<double>(temperature.value());
+                    msg.set_payload(payload.dump());
 
                     phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
                 }
             };
 
-            std::function<void()> cpu_info = [this, &lion_conn]() {
-                if (lion_conn->is_connected())
-                {
-                    auto * sys_info = new lion_protocol::SysInfo();
-                    sys_info->set_type(lion_protocol::SysInfoType::CPU_INFO);
-                    auto * resource_type = new lion_protocol::ResourceType();
-                    resource_type->set_allocated_sysinfo(sys_info);
-
-                    lion_protocol::Request request;
-                    request.set_command(lion_protocol::GET);
-                    request.set_allocated_resource(resource_type);
-
-                    lion_conn->send("cpu_info", request.SerializeAsString());
-
-                    std::string identity;
-                    std::string buffer;
-                    lion_conn->recv(identity, buffer);
-
-                    lion_protocol::Response response;
-                    if (!response.ParseFromString(std::string(static_cast<char*>(buffer.data()), buffer.size())))
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to parse received protobuf response from Lion");
-                        return;
-                    }
-
-                    if (response.status() == lion_protocol::FAIL)
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Received response from Lion has a wrong status");
-                        return;
-                    }
-
-                    phoenix_proto::message msg;
-                    msg.set_topic("sysinfo/cpu_info");
-                    msg.set_payload(response.payload().sval());
-
-                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
-                }
-            };
-
-            std::function<void()> os_info = [this, &lion_conn]() {
-                if (lion_conn->is_connected())
-                {
-                    auto * sys_info = new lion_protocol::SysInfo();
-                    sys_info->set_type(lion_protocol::SysInfoType::OS_INFO);
-                    auto * resource_type = new lion_protocol::ResourceType();
-                    resource_type->set_allocated_sysinfo(sys_info);
-
-                    lion_protocol::Request request;
-                    request.set_command(lion_protocol::GET);
-                    request.set_allocated_resource(resource_type);
-
-                    lion_conn->send("os_info", request.SerializeAsString());
-
-                    std::string identity;
-                    std::string buffer;
-                    lion_conn->recv(identity, buffer);
-
-                    lion_protocol::Response response;
-                    if (!response.ParseFromString(std::string(static_cast<char*>(buffer.data()), buffer.size())))
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to parse received protobuf response from Lion");
-                        return;
-                    }
-
-                    if (response.status() == lion_protocol::FAIL)
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Received response from Lion has a wrong status");
-                        return;
-                    }
-
-                    phoenix_proto::message msg;
-                    msg.set_topic("sysinfo/os_info");
-                    msg.set_payload(response.payload().sval());
-
-                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
-                }
-            };
-
-            std::function<void()> disk_info = [this, &lion_conn]() {
-                if (lion_conn->is_connected())
-                {
-                    auto * sys_info = new lion_protocol::SysInfo();
-                    sys_info->set_type(lion_protocol::SysInfoType::DISK_INFO);
-                    auto * resource_type = new lion_protocol::ResourceType();
-                    resource_type->set_allocated_sysinfo(sys_info);
-
-                    lion_protocol::Request request;
-                    request.set_command(lion_protocol::GET);
-                    request.set_allocated_resource(resource_type);
-
-                    lion_conn->send("disk_info", request.SerializeAsString());
-
-                    std::string identity;
-                    std::string buffer;
-                    lion_conn->recv(identity, buffer);
-
-                    lion_protocol::Response response;
-                    if (!response.ParseFromString(std::string(static_cast<char*>(buffer.data()), buffer.size())))
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to parse received protobuf response from Lion");
-                        return;
-                    }
-
-                    if (response.status() == lion_protocol::FAIL)
-                    {
-                        LOG_ERROR(LOGGER(CONFIG()->application.name), "Received response from Lion has a wrong status");
-                        return;
-                    }
-
-                    phoenix_proto::message msg;
-                    msg.set_topic("sysinfo/disk_info");
-                    msg.set_payload(response.payload().sval());
-
-                    phoenix_connector_->publisher_instance()->publish(CONFIG()->connector.phoenix.zmq_pub.topic, msg.SerializeAsString());
-                }
-            };
-
-            task_manager_->add_task(cpu_info);
-            task_manager_->add_task(os_info);
-            task_manager_->add_task(disk_info);
+            task_manager_->add_task(arch);
+            task_manager_->add_task(os);
+            task_manager_->add_task(os_release);
+            task_manager_->add_task(cpu_num);
+            task_manager_->add_task(cpu_speed);
+            task_manager_->add_task(storage_total);
+            task_manager_->add_task(storage_free);
             task_manager_->add_task(uptime, std::chrono::minutes(10));
-            task_manager_->add_task(boot_time, std::chrono::minutes(10));
             task_manager_->add_task(temperature, std::chrono::minutes(10));
 
             task_manager_->start();
@@ -288,9 +189,6 @@ namespace iot_service
         });
 
         sub_thread_handler_ = std::thread([this]() {
-            std::unique_ptr<lion_connector> lion_conn = std::make_unique<lion_connector>();
-            lion_conn->connect(CONFIG()->connector.lion.zmq_req.addr);
-
             while (alive_)
             {
                 int timeout_ms = 1000;
@@ -302,64 +200,18 @@ namespace iot_service
                     if (topic == "management")
                     {
                         nlohmann::json jpayload = nlohmann::json::parse(payload);
-                        if (jpayload["type"].get<std::string>() == "shutdown" && jpayload["value"].get<bool>())
+                        if (jpayload["type"].get<std::string>() == "shutdown")
                         {
-                            auto * power = new lion_protocol::Power;
-                            power->set_type(lion_protocol::PowerType::SHUTDOWN);
-                            auto * resource_type = new lion_protocol::ResourceType();
-                            resource_type->set_allocated_power(power);
-
-                            lion_protocol::Request request;
-                            request.set_command(lion_protocol::SET);
-                            request.set_allocated_resource(resource_type);
-
-                            lion_conn->send("shutdown", request.SerializeAsString());
-
-                            std::string identity;
-                            std::string buffer;
-                            lion_conn->recv(identity, buffer);
-
-                            lion_protocol::Response response;
-                            if (!response.ParseFromString(std::string(static_cast<char*>(buffer.data()), buffer.size())))
+                            if (sys::power::set(lion_protocol::PowerType::SHUTDOWN, jpayload["value"].get<bool>()) == -1)
                             {
-                                LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to parse received protobuf response from Lion");
-                                return;
-                            }
-
-                            if (response.status() == lion_protocol::FAIL)
-                            {
-                                LOG_ERROR(LOGGER(CONFIG()->application.name), "Received response from Lion has a wrong status");
-                                return;
+                                LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to shutdown device");
                             }
                         }
                         else if (jpayload["type"].get<std::string>() == "reboot" && jpayload["value"].get<bool>())
                         {
-                            auto * power = new lion_protocol::Power;
-                            power->set_type(lion_protocol::PowerType::REBOOT);
-                            auto * resource_type = new lion_protocol::ResourceType();
-                            resource_type->set_allocated_power(power);
-
-                            lion_protocol::Request request;
-                            request.set_command(lion_protocol::SET);
-                            request.set_allocated_resource(resource_type);
-
-                            lion_conn->send("reboot", request.SerializeAsString());
-
-                            std::string identity;
-                            std::string buffer;
-                            lion_conn->recv(identity, buffer);
-
-                            lion_protocol::Response response;
-                            if (!response.ParseFromString(std::string(static_cast<char*>(buffer.data()), buffer.size())))
+                            if (sys::power::set(lion_protocol::PowerType::REBOOT, jpayload["value"].get<bool>()) == -1)
                             {
-                                LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to parse received protobuf response from Lion");
-                                return;
-                            }
-
-                            if (response.status() == lion_protocol::FAIL)
-                            {
-                                LOG_ERROR(LOGGER(CONFIG()->application.name), "Received response from Lion has a wrong status");
-                                return;
+                                LOG_ERROR(LOGGER(CONFIG()->application.name), "Failed to reboot device");
                             }
                         }
                         else

@@ -28,20 +28,24 @@ add_subdirectory(proto)
 set(SVC_HDR_FILES
         src/iot_service/microsvc_controller.hpp
         src/iot_service/phoenix_connector.hpp
-        src/iot_service/lion_connector.hpp
         src/iot_service/task_manager.hpp
+        src/system/lion_connector.hpp
+        src/system/sysinfo.hpp
         src/utils/config.hpp
         src/utils/config_st.hpp
         src/utils/interrupt_handler.hpp
         src/utils/logger.hpp
         src/utils/logger.hpp
+        src/utils/random.hpp
+        src/utils/safe_queue.hpp
         )
 
 set(SVC_SRC_FILES
         src/iot_service/microsvc_controller.cpp
         src/iot_service/phoenix_connector.cpp
-        src/iot_service/lion_connector.cpp
         src/iot_service/task_manager.cpp
+        src/system/lion_connector.cpp
+        src/system/sysinfo.cpp
         src/utils/config.cpp
         src/utils/logger.cpp
         )
@@ -62,4 +66,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${ZeroMQ_INCLUDE_DIR})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${ZeroMQ_LIBRARY} lion_proto phoenix_proto)
 
-install (TARGETS ${PROJECT_NAME} DESTINATION bin)
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+install(FILES etc/config.json DESTINATION etc/turtle)
