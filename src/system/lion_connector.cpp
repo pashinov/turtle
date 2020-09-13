@@ -1,11 +1,13 @@
 // project includes
-#include <iot_service/lion_connector.hpp>
+#include <system/lion_connector.hpp>
 
-namespace iot_service
+namespace lion
 {
     lion_connector::lion_connector()
     {
         zsock_ = zmq::socket_t(zctx_, ZMQ_REQ);
+        zsock_.setsockopt(ZMQ_LINGER, 0);
+        zsock_.setsockopt(ZMQ_RCVTIMEO, 1000); // ms
     }
 
     void lion_connector::connect(const std::string &addr)
@@ -46,17 +48,9 @@ namespace iot_service
         msg = std::string(static_cast<char*>(zmsg.data()), zmsg.size());
     }
 
-    void lion_connector::disconnect(const std::string &addr)
+    void lion_connector::close()
     {
         std::lock_guard<std::mutex> guard(mutex_);
-        if (zsock_.connected())
-        {
-            zsock_.disconnect(addr);
-        }
-    }
-
-    bool lion_connector::is_connected()
-    {
-        return zsock_.connected();
+        zsock_.close();
     }
 }

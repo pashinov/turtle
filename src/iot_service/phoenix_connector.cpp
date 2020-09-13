@@ -86,7 +86,7 @@ namespace iot_service
                     rc = zmq_subscriber_.recv(msg, zmq::recv_flags::none).value() && rc;
                     if(rc > 0)
                     {
-                        phoenix_proto::message proto_msg;
+                        phoenix_protocol::MqttMessage proto_msg;
                         if (proto_msg.ParseFromString(std::string(static_cast<char*>(msg.data()), msg.size())))
                         {
                             received_message_.push(std::make_pair(proto_msg.topic(), proto_msg.payload()));

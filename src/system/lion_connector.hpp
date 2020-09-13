@@ -10,7 +10,7 @@
 // 3rdparty includes
 #include <zmq.hpp>
 
-namespace iot_service
+namespace lion
 {
     class lion_connector
     {
@@ -21,8 +21,7 @@ namespace iot_service
         void connect(const std::string& addr);
         void send(const std::string& identity, const std::string& msg);
         void recv(std::string& identity, std::string& msg);
-        void disconnect(const std::string &addr);
-        bool is_connected();
+        void close();
     private:
         std::mutex mutex_;
         zmq::context_t zctx_;
